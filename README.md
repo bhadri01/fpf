@@ -8,7 +8,7 @@ FPF is a backend API built with FastAPI. It provides various endpoints for authe
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - PostgreSQL
 - FastAPI
 - Alembic
