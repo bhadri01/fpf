@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Account</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 16px auto;
+            background-color: #ececec;
+            color: #2c2c2c;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #6a11cb;
+            margin-bottom: 10px;
+        }
+
+        .content p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .content p span {
+            font-size: 18px;
+            font-weight: bold;
+            color: #6a11cb;
+        }
+
+        .action-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .action-button-container a {
+            text-decoration: none;
+            color: #ffffff;
+        }
+
+        .action-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(90deg, #007bff, #6a11cb);
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .action-button:hover {
+            transform: scale(1.05);
+            background: linear-gradient(90deg, #0056b3, #4b0082);
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #777777;
+            margin-top: 20px;
+        }
+
+        .footer a {
+            color: #6a11cb;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to {{ app_name }}!</h1>
+        </div>
+        <div class="content">
+            <p>
+                Hi <span>{{ user_name }}</span>,
+            </p>
+            <p>We are excited to have you on board! Click the button below to confirm your email address and complete your account registration with <b>{{ app_name }}</b>. 🚀</p>
+            <div class="action-button-container">
+                <a href="{{ verification_link }}" class="action-button">Verify My Account</a>
+            </div>
+            <p>If you did not sign up for a {{ app_name }} account, please ignore this email or contact our support team.</p>
+        </div>
+        <div class="footer">
+            <p>Secured by <b>{{ app_name }}</b> | <a href="#">Visit Support</a></p>
+        </div>
+    </div>
+</body>
+
+</html>
