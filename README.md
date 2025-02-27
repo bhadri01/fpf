@@ -1,77 +1,203 @@
-# FPF Framework
+# Succeedex FastAPI Project
+
+- [Succeedex FastAPI Project](#succeedex-fastapi-project)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Setup](#setup)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Running the Application](#running-the-application)
+    - [Usage](#usage)
+    - [Auto-Generated Templates](#auto-generated-templates)
+    - [Role-Based Route Assignment](#role-based-route-assignment)
+    - [Periodic Token Cleanup](#periodic-token-cleanup)
+  - [Database Migrations](#database-migrations)
+    - [Initial Setup](#initial-setup)
+    - [Creating a Migration](#creating-a-migration)
+    - [Applying Migrations](#applying-migrations)
+    - [Rolling Back Migrations](#rolling-back-migrations)
+    - [Listing Migrations](#listing-migrations)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Overview
 
-FPF is a backend API built with FastAPI. It provides various endpoints for authentication, data management, and more.
+This project is a FastAPI application that includes dynamic model mapping, CRUD operations, role-based route assignment, and auto-generated templates for create, update, view, and list operations. It also includes middleware for user permissions and CORS, periodic token cleanup, and static file serving.
 
-## Getting Started
+## Features
+
+- Dynamic model mapping for CRUD operations.
+- Auto-generated templates for create, update, view, and list operations.
+- Auto-generated `assign_roles.html` template.
+- Role-based route assignment functionality.
+- Periodic token cleanup task.
+- Middleware for user permissions and CORS.
+- Static file serving from the "public" directory.
+- Dynamic router generation for all models.
+- Menu bar in templates for easy navigation.
+
+## Setup
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.8+
 - PostgreSQL
-- FastAPI
-- Alembic
 
 ### Installation
 
 1. Clone the repository:
+
     ```sh
-    git clone https://github.com/your-repo/FPF.git
-    cd FPF
+    git clone https://github.com/yourusername/succeedex-fastapi.git
+    cd succeedex-fastapi
     ```
 
-2. Create and activate a virtual environment:
+2. Create a virtual environment and activate it:
+
     ```sh
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+    python -m venv venv
+    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
     ```
 
 3. Install the dependencies:
+
     ```sh
     pip install -r requirements.txt
     ```
 
 4. Set up the environment variables:
-    Create a [.env](http://_vscodecontentref_/6) file in the root directory with the following content:
+
+    Create a `.env` file in the root directory of the project and add the following environment variables:
+
     ```env
     # App Name
-    APP_NAME=FPF
+    APP_NAME=<app_name>
+    APP_VERSION=<app_version>
+    APP_URL=<app_url>
 
-    # FastAPI
-    SECRET_KEY=<>uuid.uuid4().hex<>
+    # Authentication
+    SECRET_KEY=<your_secret_key>
+    ALGORITHM=HS256
+    TOKEN_EXPIRE_MINUTES=<token_expiration_time_in_minutes>
 
     # Database
-    POSTGRESQL_DATABASE=postgresql+asyncpg://my_user:my_password@host-name/db-name
+    POSTGRESQL_DATABASE_MASTER_URL=postgresql+asyncpg://<your_postgres_user>:<your_postgres_password>@<hostname>/<your_postgres_db>
+    POSTGRESQL_DATABASE_SLAVE_URL=postgresql+asyncpg://<your_postgres_user>:<your_postgres_password>@<hostname>/<your_postgres_db>
 
     # SMTP
-    SMTP_SERVER=smtp.gmail.com
-    SMTP_PORT=587
-    EMAIL_ADDRESS=""
-    EMAIL_PASSWORD=""
+    MAIL_USERNAME=<your_mail_username>
+    MAIL_PASSWORD=<your_mail_password>
+    MAIL_FROM=<your_mail_from>
+    MAIL_PORT=<mail_port>
+    MAIL_SERVER=<mail_server>
+    MAIL_STARTTLS=False
+    MAIL_SSL_TLS=True
+    USE_CREDENTIALS=True
+    VALIDATE_CERTS=True
+    MAIL_FROM_NAME=<mail_from_name>
+    TEMPLATE_FOLDER=app/templates
+
+    # Environment
+    ENVIRONMENT=development
     ```
 
+    **Note**: Edit the `.env` file with your configuration.
+
 5. Run the database migrations:
+
     ```sh
     alembic upgrade head
     ```
 
-### Running the Project
+### Running the Application
 
-To run the project, use the following command:
+1. Start the FastAPI application:
+
+    ```sh
+    uvicorn main:app --reload
+    ```
+
+2. Access the application at `http://localhost:8000`.
+
+### Usage
+
+- The application includes routes for CRUD operations, role-based route assignment, and static file serving.
+- The admin routes are prefixed with `/admin`.
+- The API routes are prefixed with `/api`.
+
+### Auto-Generated Templates
+
+The application auto-generates templates for create, update, view, and list operations for each model. These templates are located in the `app/api/admin/templates` directory.
+
+### Role-Based Route Assignment
+
+The `assign_roles.html` template allows you to assign roles to routes. This template is auto-generated and located in the `app/api/admin/templates` directory.
+
+### Periodic Token Cleanup
+
+The application includes a periodic task to clean up expired tokens. This task runs every 60 seconds.
+
+## Database Migrations
+
+We use Alembic for handling database migrations.
+
+### Initial Setup
+
+1. Install Alembic:
+    ```sh
+    pip install alembic
+    ```
+
+2. Initialize Alembic in your project:
+    ```sh
+    alembic init alembic
+    ```
+
+3. Configure Alembic by editing `alembic.ini` and `alembic/env.py` to match your database settings.
+    ```
+    sqlalchemy.url = "postgresql://username:password@postgresql_server_url/my_database"
+    ```
+
+**Note**: Alembic is set to auto-generate migrations on changes to models in the `models` directory, and the `alembic/env.py` file is configured to use the `models` directory as the source of truth for the database schema definition and the `alembic/versions` directory for storing the migration files generated by Alembic.
+
+### Creating a Migration
+
+To create a new migration, run:
 ```sh
-fastapi dev
+alembic revision --autogenerate -m "description of the migration"
 ```
 
-### API Documentation
-    Once the server is running, you can access the API documentation at:
+### Applying Migrations
 
-    - Swagger UI
-    - ReDoc
-
-### License
-    This project is licensed under the MIT License. See the LICENSE file for details.
-
+To apply the migrations to the database, run:
+```sh
+alembic upgrade head
 ```
-This `README.md` provides a clear structure, links to relevant files, and instructions for setting up and running the project.
+
+### Rolling Back Migrations
+
+To roll back the last migration, run:
+```sh
+alembic downgrade -1
 ```
+
+### Listing Migrations
+
+To list all migrations, run:
+```sh 
+alembic history
+```
+
+For more information on Alembic, refer to the [official documentation](https://alembic.sqlalchemy.org/en/latest/).
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

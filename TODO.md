@@ -1,53 +1,63 @@
-# To-Do List
+# TODO List for Backend Development
 
-## Features
+## **Authentication & Security**
+- [x] Implement JWT-based authentication (login, register, logout, refresh token)
+- [x] Implement Two-Factor Authentication (2FA) with OTP
+- [x] Encrypt 2FA secret before storing in DB
+- [x] Verify OTP before enabling 2FA
+- [x] Implement secure password hashing
+- [x] Implement email verification system
+- [x] Implement forgot/reset password with email notification
+- [x] Prevent continuous reset email requests (cooldown system)
+- [ ] Implement brute-force protection for login attempts (Rate limiting)
 
-### Completed
-- [x] Add user roles
-- [x] Set up database schema
-- [x] Implement email service with dynamic HTML templates
-- [x] Configure environment variables for email service
-- [x] Set up project structure
-- [x] Configure database
-- [x] Implement initial API endpoints
-- [x] Implement authentication
-- [x] Add role-based access control
-- [x] Implement token generation and validation
-- [x] Implement user registration
-- [x] Implement user login
-- [x] Add password reset functionality
-- [x] Create email notification service
+## **API Key Authentication**
+- [x] Implement API key creation & storage (secure hashing)
+- [x] Implement API key validation in middleware
+- [x] Implement API key deletion
+- [ ] Implement API key expiration & rotation
+- [ ] Implement role-based API key permissions
 
-### In Progress
-- [ ] MVP deployment
-- [ ] Implement user profile management
+## **Middleware & Access Control**
+- [x] Implement role-based access control (RBAC) using Redis cache
+- [x] Implement permission middleware to check access rights
+- [x] Allow API key authentication alongside JWT authentication
+- [x] Allow public routes to be accessed without authentication
+- [ ] Implement request rate limiting for API endpoints
 
-### To Do
-- [ ] Add logging and monitoring
-- [ ] Write unit tests for all endpoints
-- [ ] Set up CI/CD pipeline
-- [ ] Deploy to production
+## **User Management**
+- [x] Implement user role management system
+- [x] Implement user status (active, pending, blocked, paused)
+- [ ] Implement user session tracking (Active sessions & logout all)
 
-## Checkpoints
+## **Database & Caching**
+- [x] Use PostgreSQL as the main database
+- [x] Implement Redis for caching permissions & authentication-related data
+- [ ] Implement database connection pooling & optimization
+- [ ] Implement scheduled cache invalidation
 
-### Completed
-- [x] Backend architecture design
-- [x] Set up project structure
-- [x] Configure database
-- [x] Implement initial API endpoints
-- [x] Complete authentication implementation
-- [x] Complete role-based access control
-- [x] Complete password reset functionality
-- [x] Complete email notification service
+## **Logging & Monitoring**
+- [x] Implement logging for authentication & security events
+- [ ] Integrate structured logging for better debugging
+- [ ] Implement API request logging & analytics
 
-### In Progress
-- [ ] MVP deployment
+## **Admin Panel Features**
+- [x] Implement admin panel for user & role management
+- [x] Implement role-based permission assignment
+- [ ] Implement audit logs for user activities
+- [ ] Implement API key usage tracking
 
-### To Do
-- [ ] Finalize API documentation
-- [ ] Conduct security audit
-- [ ] Perform load testing
-- [ ] Prepare deployment scripts
-- [ ] Deploy to staging environment
-- [ ] Perform end-to-end testing
-- [ ] Deploy to production environment
+## **Future Enhancements**
+- [ ] Implement OAuth2 / Social Login (Google, GitHub, etc.)
+- [ ] Implement API rate limiting based on user roles
+- [ ] Implement service-to-service authentication (internal API keys)
+- [ ] Implement webhook security for external integrations
+- [ ] Implement event-driven architecture using message queues (RabbitMQ)
+
+## **Testing & Deployment**
+- [x] Setup Docker for local development
+- [x] Implement CI/CD pipeline for automated deployments
+- [ ] Write unit tests for authentication & API key management
+- [ ] Implement end-to-end testing for user authentication
+- [ ] Optimize performance before production release
+

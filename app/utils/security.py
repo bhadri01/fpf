@@ -1,44 +1,24 @@
 from datetime import datetime, timedelta, timezone
+import os
 from typing import Optional
 from jose import jwt
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.core.database import get_db_session
-from fastapi import Request
-from sqlalchemy.exc import SQLAlchemyError
-from app.core.token_blacklist import is_token_blacklisted
 from app.core.config import settings
+import hashlib
+import hmac
+import base64
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.backends import default_backend
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
 TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-http_bearer = HTTPBearer()
-
 '''
------------------------------------------------------
-|         User password hash function               |
------------------------------------------------------
-'''
-
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-'''
------------------------------------------------------
-|         Token generation for authentication       |
------------------------------------------------------
+=====================================================
+# Create JWT token
+=====================================================
 '''
 
 
@@ -53,122 +33,83 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 '''
------------------------------------------------------
-|                Decode JWT token                   |
------------------------------------------------------
+=====================================================
+# Decode JWT token
+=====================================================
 '''
+
 
 def decode_token(token: str):
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-'''
------------------------------------------------------
-|         Token validation for authentication       |
------------------------------------------------------
-'''
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
-    session: AsyncSession = Depends(get_db_session)
-):
-    from app.api.auth.models import User
-    token = credentials.credentials
-    try:
-        if is_token_blacklisted(token):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been blacklisted",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("id")
-        token_type = payload.get("type")
-        if token_type != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="UserId not found in token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        query = await session.execute(select(User).where(User.id == user_id))
-        user = query.scalar_one_or_none()
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return user
-    except SQLAlchemyError as e:
-        error_message = str(e).split("\n")[1] if len(
-            str(e).split("\n")) > 1 else str(e)
-        if "DETAIL:" in error_message:
-            error_message = error_message.replace("DETAIL:", "").strip()
-        raise HTTPException(status_code=500, detail=error_message)
-    except jwt.JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
 
 '''
------------------------------------------------------
-|        Enforce active status for users           |
------------------------------------------------------
+=====================================================
+# Hash Api key
+=====================================================
 '''
 
 
-async def get_current_active_user(request: Request, current_user=Depends(get_current_user), ):
-    from app.api.auth.models import UserStatus
-    # Enforce status checks for paused accounts based on the request method
-    if current_user.status == UserStatus.PAUSED.value:
-        if request.method not in ["GET", "OPTIONS", "HEAD"]:
-            raise HTTPException(
-                status_code=403,
-                detail="Your account is paused. You can only view resources."
-            )
-
-    # new users with a pending status
-    if current_user.status == UserStatus.PENDING.value:
-        raise HTTPException(
-            status_code=403,
-            detail="Your account is pending confirmation."
-        )
-
-    if current_user.status == UserStatus.BLOCKED.value:
-        raise HTTPException(
-            status_code=403,
-            detail="Your account is blocked."
-        )
-    return current_user
+def hash_key(api_key: str):
+    secret_key = SECRET_KEY.encode()
+    hashed = hmac.new(secret_key, api_key.encode(), hashlib.sha256).digest()
+    return base64.b64encode(hashed).decode()
 
 
 '''
------------------------------------------------------
-|        Enforce role-based access control          |
------------------------------------------------------
+=====================================================
+# Verify Api key
+=====================================================
 '''
 
 
-def get_current_active_user_with_roles(required_roles: list[str]):
-    if "PUBLIC" in required_roles:
-        async def allow_all_users():
-            return True
-        return allow_all_users
-    else:
-        async def _get_current_active_user_with_roles(current_user=Depends(get_current_active_user)):
-            if current_user.role.name not in required_roles:  # Ensure `role` is eagerly loaded
-                raise HTTPException(
-                    status_code=403, detail="Not enough permissions"
-                )
-            return current_user
-        return _get_current_active_user_with_roles
+def verify_key(api_key: str, hashed_key: str) -> bool:
+    return hash_key(api_key) == hashed_key
+
+
+'''
+=====================================================
+# Encrypt Secret
+=====================================================
+'''
+
+
+def encrypt_secret(secret: str) -> str:
+    """Encrypts 2FA secret using AES-256 encryption."""
+    iv = os.urandom(16)
+    cipher = Cipher(algorithms.AES(base64.b64decode(SECRET_KEY)),
+                    modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+
+    # Pad the secret
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(secret.encode()) + padder.finalize()
+
+    # Encrypt
+    encrypted_secret = encryptor.update(padded_data) + encryptor.finalize()
+    return base64.b64encode(iv + encrypted_secret).decode()
+
+
+'''
+=====================================================
+# Decrypt Secret
+=====================================================
+'''
+
+
+def decrypt_secret(encrypted_secret: str) -> str:
+    """Decrypts an encrypted 2FA secret."""
+    encrypted_secret = base64.b64decode(encrypted_secret)
+    iv = encrypted_secret[:16]
+    cipher = Cipher(algorithms.AES(base64.b64decode(SECRET_KEY)),
+                    modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+
+    padded_secret = decryptor.update(
+        encrypted_secret[16:]) + decryptor.finalize()
+
+    # Unpad the secret
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    return unpadder.update(padded_secret) + unpadder.finalize()

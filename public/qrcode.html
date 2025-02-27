@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Viewer</title>
+</head>
+<body>
+
+    <h2>Paste Hex Code to View QR Code</h2>
+    
+    <textarea id="hexInput" rows="6" cols="50" placeholder="Paste QR hex code here..."></textarea><br><br>
+    
+    <button onclick="convertHexToImage()">Show QR Code</button>
+
+    <h3>QR Code:</h3>
+    <img id="qrImage" style="display: none; border: 1px solid #000;" />
+
+    <script>
+        function convertHexToImage() {
+            let hexString = document.getElementById("hexInput").value.trim();
+
+            if (!hexString) {
+                alert("Please enter a hex string!");
+                return;
+            }
+
+            let byteArray = new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            let blob = new Blob([byteArray], { type: "image/png" });
+            let imageUrl = URL.createObjectURL(blob);
+
+            let imgElement = document.getElementById("qrImage");
+            imgElement.src = imageUrl;
+            imgElement.style.display = "block";
+        }
+    </script>
+
+</body>
+</html>

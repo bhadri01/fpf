@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+        }
+        .email-header {
+            text-align: center;
+            padding: 10px 0;
+        }
+        .banner {
+            width: 100%;
+            max-width: 600px;
+            height: 200px;
+            background: url('https://via.placeholder.com/600x200.png') no-repeat center center;
+            background-size: cover;
+            border-radius: 8px;
+        }
+        .email-body {
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+        }
+        .email-body h2 {
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .email-body p {
+            font-size: 16px;
+            color: #555555;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        .company-logo {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .company-logo img {
+            max-width: 150px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #777777;
+        }
+        @media (max-width: 600px) {
+            .email-container {
+                padding: 10px;
+            }
+            .banner {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Email Header with Banner -->
+        <div class="email-header">
+            <div class="banner"></div>
+        </div>
+        
+        <!-- Email Body -->
+        <div class="email-body">
+            <h2>Password Reset Request</h2>
+            <p>Hi {{username}},</p>
+            <p>We received a request to reset your password. You can reset your password by clicking the button below.</p>
+            <a href="http://localhost:5173/reset-password?token={{token}}" class="button">Reset Password</a>
+            <p>If you didn’t request a password reset, please ignore this email.</p>
+
+            <!-- Company Logo -->
+            <div class="company-logo">
+                <img src="https://via.placeholder.com/150x50.png" alt="Company Logo" />
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thanks,</p>
+        </div>
+    </div>
+</body>
+</html>

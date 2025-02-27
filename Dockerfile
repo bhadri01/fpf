@@ -4,6 +4,4 @@ RUN apk add --no-cache git openssh shadow bash postgresql-dev
 
 WORKDIR /app
 
-COPY . .
-
 CMD ["tail", "-f", "/dev/null"]
