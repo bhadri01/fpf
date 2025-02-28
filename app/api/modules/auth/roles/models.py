@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Role table
 =====================================================
 '''
-
 class Role(Base):
     __tablename__ = "roles"
 
@@ -25,16 +24,38 @@ class Role(Base):
     __allowed__ = True
 
 
+    '''
+    =====================================================
+    # Before Create method for Role table
+    =====================================================
+    '''
     @classmethod
-    async def create(cls, session: AsyncSession, data_list: List[any]):
+    async def before_create(cls, session: AsyncSession, data_list: List[any]):
+        print("Before Role created")
         for data in data_list:
             data.name = data.name.upper()
             data.description = data.description or "Default description"
         return data_list
     
+    '''
+    =====================================================
+    # After Create method for Role table
+    =====================================================
+    '''
     @classmethod
-    async def update(cls, session: AsyncSession, data_list: List[any]):
+    async def after_create(cls, session: AsyncSession, data_list: List[any]):
+        print("After Role created")
+        pass
+    
+    '''
+    =====================================================
+    # Before Update method for Role table
+    =====================================================
+    '''
+    @classmethod
+    async def before_update(cls, session: AsyncSession, data_list: List[any]):
         for data in data_list:
+            # Check if the role is reserved
             existing_role = await session.execute(select(Role).where(Role.id == data.id))
             existing_role = existing_role.scalar_one_or_none()
             if existing_role and existing_role.name.upper() in ["PUBLIC", "SUPERADMIN"]:

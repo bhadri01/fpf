@@ -1,8 +1,8 @@
-import uuid
-from sqlalchemy import UUID, ForeignKey, String
-from sqlalchemy.orm import relationship
-from app.core.database.base_model import Base
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import UUID, ForeignKey, String
+from app.core.database.base_model import Base
+from sqlalchemy.orm import relationship
+import uuid
 
 '''
 =====================================================
