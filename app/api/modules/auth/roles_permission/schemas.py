@@ -7,7 +7,7 @@ import uuid
 
 '''
 =====================================================
-# RolePermission Schema
+# RolePermission Base Schema
 =====================================================
 '''
 
@@ -16,21 +16,28 @@ class RolePermissionBase(BaseModel):
     route: Optional[str] = Field(None, description="The route for which the permission is granted")
     method: Optional[str] = Field(None, description="The HTTP method for which the permission is granted")
 
+'''
+=====================================================
+# RolePermission Schema
+=====================================================
+'''
 class RolePermissionCreate(BaseModel):
     role_id: uuid.UUID = Field(..., description="The unique identifier for the role")
     route: str = Field(..., description="The route for which the permission is granted")
     method: str = Field(..., description="The HTTP method for which the permission is granted")
 
+'''
+=====================================================
+# RolePermission Update Schema
+=====================================================
+'''
 class RolePermissionUpdate(RolePermissionBase, UuidModel):
     pass
 
+'''
+=====================================================
+# RolePermission Response Schema
+=====================================================
+'''
 class RolePermissionResponse(BaseResponseModel, CreateTime, UpdateTime, RolePermissionBase, OptionalUuidModel):
-    role: Optional['GeneralRoleResponse'] = Field(None, description="The role associated with the permission")  # ✅ Use string-based reference
-
-class GeneralRolePermissionResponse(BaseResponseModel, CreateTime, UpdateTime, RolePermissionBase, OptionalUuidModel):
     pass
-
-# ✅ Import AFTER class definition
-from app.api.modules.auth.roles.schemas import GeneralRoleResponse
-
-RolePermissionResponse.model_rebuild()  # ✅ Resolves forward references

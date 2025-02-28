@@ -1,11 +1,9 @@
-from math import e
 from sqlalchemy import UUID, DateTime, asc, delete, desc, func, or_, select, update
 from sqlalchemy.ext.declarative import as_declarative, declarative_base
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.filtering import parse_filters
 from typing import Any, Dict, List, Optional
-from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 import uuid
 import json
@@ -38,21 +36,32 @@ class Base:
     @classmethod
     async def bulk_create(cls, session: AsyncSession, data_list: List[Any]):
         # 🔥 Call model-specific create() (defined in User, Role, etc.)
-        updated_data = await cls.create(session, data_list)  
+        before_create = await cls.before_create(session, data_list)  
 
-        if not updated_data:
+        if not before_create:
             return []  # Return empty list if no data provided
 
         # 🔥 Ensure data is converted to dictionaries before passing to ORM
-        objects = [cls(**(data.dict() if hasattr(data, "dict") else data)) for data in updated_data]
+        objects = [cls(**(data.dict() if hasattr(data, "dict") else data)) for data in before_create]
 
         session.add_all(objects)
         await session.commit()
+
+        for obj in objects:
+            await session.refresh(obj)
+        
+        # 🔥 Call model-specific after_create() (defined in User, Role, etc.)
+        await cls.after_create(session, objects)
         return objects
 
     @classmethod
-    async def create(cls, session: AsyncSession, data_list: List[Any]) -> List[Dict[str, Any]]:
-        """This method should be overridden in child classes"""
+    async def before_create(cls, session: AsyncSession, data_list: List[Any]) -> List[Dict[str, Any]]:
+        # This method should be overridden in child classes to perform any pre-processing
+        return data_list
+    
+    @classmethod
+    async def after_create(cls, session: AsyncSession, data_list: List[Any]) -> List[Dict[str, Any]]:
+        # This method should be overridden in child classes to perform any post-processing
         return data_list
     
     '''
@@ -64,11 +73,11 @@ class Base:
     async def bulk_update(cls, session: AsyncSession, update_data_list: List[dict]):
         if not update_data_list:
             return 0  # No data to update
-        updated_data = await cls.update(session, update_data_list)
+        before_update = await cls.before_update(session, update_data_list)
 
         updated_count = 0
 
-        for data_obj in updated_data:
+        for data_obj in before_update:
             # ✅ Convert Pydantic model to dictionary
             data = data_obj.dict(exclude_unset=True) if hasattr(data_obj, "dict") else data_obj
 
@@ -78,10 +87,10 @@ class Base:
 
             # ✅ Perform update dynamically
             stmt = (
-            update(cls)
-            .where(cls.id == obj_id)
-            .values(**data)
-            .execution_options(synchronize_session=False)
+                update(cls)
+                .where(cls.id == obj_id)
+                .values(**data)
+                .execution_options(synchronize_session=False)
             )
 
             result = await session.execute(stmt)
@@ -89,11 +98,20 @@ class Base:
                 updated_count += 1
 
         await session.commit()  # ✅ Commit all updates at once
+
+        # 🔥 Call model-specific after_update() (defined in User, Role, etc.)
+        await cls.after_update(session, before_update)
+        
         return updated_count  # ✅ Return number of updated records
     
     @classmethod
-    async def update(cls, session: AsyncSession, data_list: List[any]):
-        """This method should be overridden in child classes"""
+    async def before_update(cls, session: AsyncSession, data_list: List[any]):
+        # This method should be overridden in child classes to perform any pre-processing
+        return data_list
+    
+    @classmethod
+    async def after_update(cls, session: AsyncSession, data_list: List[any]):
+        # This method should be overridden in child classes to perform any post-processing
         return data_list
     
 
@@ -104,25 +122,31 @@ class Base:
     '''
     @classmethod
     async def bulk_soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        updated_ids = await cls.soft_delete(session, ids)
-        if not updated_ids:
+        before_delete_ids = await cls.before_soft_delete(session, ids)
+        if not before_delete_ids:
             return 0  # No IDs provided
 
         # Exclude already soft-deleted records
         stmt = (
             update(cls)
-            .where(cls.id.in_(updated_ids), cls.deleted_at.is_(None))
+            .where(cls.id.in_(before_delete_ids), cls.deleted_at.is_(None))
             .values(deleted_at=func.now())  # Soft delete by setting timestamp
             .execution_options(synchronize_session=False)
         )
         result = await session.execute(stmt)
         await session.commit()
 
+        await cls.after_soft_delete(session, before_delete_ids)
         return result.rowcount 
     
     @classmethod
-    async def soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        """This method should be overridden in child classes"""
+    async def before_soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
+        # This method should be overridden in child classes to perform any pre-processing
+        return ids
+    
+    @classmethod
+    async def after_soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
+        # This method should be overridden in child classes to perform any post-processing
         return ids
 
     '''
@@ -132,19 +156,25 @@ class Base:
     '''
     @classmethod
     async def bulk_hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        updated_ids = await cls.hard_delete(session, ids)
-        if not updated_ids:
+        before_delete_ids = await cls.before_hard_delete(session, ids)
+        if not before_delete_ids:
             return 0  # No IDs provided
 
-        stmt = delete(cls).where(cls.id.in_(updated_ids))
+        stmt = delete(cls).where(cls.id.in_(before_delete_ids))
         result = await session.execute(stmt)
         await session.commit()
 
+        await cls.after_hard_delete(session, before_delete_ids)
         return result.rowcount
 
     @classmethod
-    async def hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        """This method should be overridden in child classes"""
+    async def before_hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
+        # This method should be overridden in child classes to perform any pre-processing
+        return ids
+
+    @classmethod
+    async def after_hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
+        # This method should be overridden in child classes to perform any post-processing
         return ids
     '''
     =====================================================
@@ -152,19 +182,8 @@ class Base:
     =====================================================
     '''
     @classmethod
-    async def get_record_by_id(cls, session: AsyncSession, record_id: uuid.UUID, include: Optional[List[str]] = None):
+    async def get_record_by_id(cls, session: AsyncSession, record_id: uuid.UUID):
         query = select(cls).where(cls.deleted_at.is_(None), cls.id == record_id)
-
-        # Include related fields
-        if include:
-            for rel in include:
-                if hasattr(cls, rel):
-                    query = query.options(selectinload(getattr(cls, rel)))  # ✅ Load related data
-                else:
-                    raise HTTPException(
-                        status_code=400, detail=f"Invalid include field: {rel}"
-                    )
-
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
@@ -180,22 +199,12 @@ class Base:
         filters: Optional[str] = None,
         sort: Optional[str] = None,
         search: Optional[str] = None,
-        include: Optional[List[str]] = None,
     ) -> List:
         
         # Exclude deleted records
         query = select(cls).where(cls.deleted_at.is_(None))
 
-        # 1️⃣ Include Related Fields
-        if include:
-            for rel in include:
-                if hasattr(cls, rel):
-                    query = query.options(selectinload(getattr(cls, rel)))
-                else:
-                    raise HTTPException(
-                        status_code=400, detail=f"Invalid include field: {rel}")
-
-        # 2️⃣ Apply Filters (Supports Nested Relationships)
+        # 1️⃣ Apply Filters (Supports Nested Relationships)
         def parse_filter_query(filters: Optional[str]) -> Optional[Dict]:
             """
             Parse a JSON string representing filters into a dictionary.
@@ -218,7 +227,7 @@ class Base:
             query = query.where(parse_filters(
                 cls, parsed_filters))  # Apply filters
 
-        # 3️⃣ Global Search (Across Text Fields)
+        # 2️⃣ Global Search (Across Text Fields)
         if search:
             search_expression = [
                 column.ilike(f"%{search}%") for column in cls.__table__.columns if column.type.python_type == str
@@ -226,7 +235,7 @@ class Base:
             if search_expression:
                 query = query.where(or_(*search_expression))
 
-        # 4️⃣ Sorting
+        # 3️⃣ Sorting
         if sort:
             try:
                 sort_field, sort_direction = sort.split(":")

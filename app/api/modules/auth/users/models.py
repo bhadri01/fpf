@@ -1,14 +1,13 @@
-from typing import List
-
-from pydantic import BaseModel
+from sqlalchemy import UUID, Boolean, String, ForeignKey
 from app.utils.password_utils import get_password_hash
 from app.utils.avatar import generate_pixel_avatar
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import UUID, Boolean, String, ForeignKey, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database.base_model import Base
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
+from pydantic import BaseModel
+from typing import List
 import uuid
 
 
@@ -46,8 +45,13 @@ class User(Base):
     
     __allowed__ = True
 
+    '''
+    =====================================================
+    # Create method for User table
+    =====================================================
+    '''
     @classmethod
-    async def create(cls, session: AsyncSession, data_list: List[any]):
+    async def before_create(cls, session: AsyncSession, data_list: List[any]):
         processed_data = []
         for data in data_list:
             if isinstance(data, BaseModel):  # Convert Pydantic to dictionary
@@ -63,8 +67,14 @@ class User(Base):
 
         return processed_data  # Return transformed data (No commit)
     
+    '''
+    =====================================================
+    # Before Update method for User table
+    =====================================================
+    '''
+
     @classmethod
-    async def update(cls, session: AsyncSession, data_list: List[any]):
+    async def before_update(cls, session: AsyncSession, data_list: List[any]):
         processed_data = []
         
         for data in data_list:

@@ -1,4 +1,3 @@
-from uuid import UUID
 from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema
 from app.api.modules.auth.users.schemas import UserCreate, UserResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -18,8 +17,6 @@ router = APIRouter()
 # Me API Route
 =====================================================
 '''
-
-
 @router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def me(request: Request):
     if hasattr(request.state, 'user'):
@@ -33,8 +30,6 @@ async def me(request: Request):
 # Login API Route
 =====================================================
 '''
-
-
 @router.post("/login", response_model=TokenSchema | TwoFactorAuthSchema, status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def login(
     request: Request,
@@ -49,8 +44,6 @@ async def login(
 # Register API Route
 =====================================================
 '''
-
-
 @router.post("/register", status_code=status.HTTP_201_CREATED, name="Auth", tags=["Auth"])
 async def register(
     request: Request,
@@ -65,8 +58,6 @@ async def register(
 # Verifty API Route
 =====================================================
 '''
-
-
 @router.get("/verify/{token}", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def verify(
     request: Request,
@@ -80,8 +71,6 @@ async def verify(
 # Resend Verify Token
 =====================================================
 '''
-
-
 @router.get("/resend-verify-token/{email}", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def resend_verify_token(
     request: Request,
@@ -96,8 +85,6 @@ async def resend_verify_token(
 # Logout API Route
 =====================================================
 '''
-
-
 @router.post("/logout", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def logout(
     request: Request,
@@ -112,8 +99,6 @@ async def logout(
 # Forgot Password API Route
 =====================================================
 '''
-
-
 @router.post("/forgot-password/{email}", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def forgot_password(
     request: Request,
@@ -128,8 +113,6 @@ async def forgot_password(
 # Reset Password API Route
 =====================================================
 '''
-
-
 @router.post("/reset-password", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def reset_password(
     request: Request,
@@ -143,8 +126,6 @@ async def reset_password(
 # Change Password API Route
 =====================================================
 '''
-
-
 @router.post("/change-password", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def change_password(
     request: Request,
@@ -159,8 +140,6 @@ async def change_password(
 # Check Username Availability Route
 =====================================================
 '''
-
-
 @router.get("/check-username/{username}", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def check_username(
     request: Request,
@@ -174,8 +153,6 @@ async def check_username(
 # Check Email Availability Route
 =====================================================
 '''
-
-
 @router.get("/check-email/{email}", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def check_email(
     request: Request,
@@ -189,8 +166,6 @@ async def check_email(
 # Refresh Token Route
 =====================================================
 '''
-
-
 @router.post("/refresh-token", response_model=AccessTokenResponseSchema, status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def refresh_token(
     request: Request,
@@ -204,8 +179,6 @@ async def refresh_token(
 # 2FA Setup Route
 =====================================================
 '''
-
-
 @router.get("/2fa-setup", response_model=Setup2FASchema, status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
 async def two_factor_setup(
     request: Request,
@@ -222,8 +195,6 @@ async def two_factor_setup(
 # 2FA Setup Verify Route
 =====================================================
 '''
-
-
 @router.post("/2fa-verify-setup", status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
 async def two_factor_verify(
     request: Request,
@@ -241,8 +212,6 @@ async def two_factor_verify(
 # 2FA TOTP Verify Route
 =====================================================
 '''
-
-
 @router.post("/2fa-verify", response_model=TokenSchema, status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
 async def two_factor_verify(
     request: Request,
@@ -256,8 +225,6 @@ async def two_factor_verify(
 # 2FA Disable Route
 =====================================================
 '''
-
-
 @router.get("/2fa-disable", status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
 async def two_factor_disable(
     request: Request,
@@ -275,8 +242,6 @@ async def two_factor_disable(
 # Create Api-key Route
 =====================================================
 '''
-
-
 @router.post("/create-api-key", status_code=status.HTTP_201_CREATED, name="Api-key", tags=["Api-key"])
 async def create_api_key(
     request: Request,
@@ -293,8 +258,6 @@ async def create_api_key(
 # Remove Api-key Route
 =====================================================
 '''
-
-
 @router.delete("/remove-api-key/{key}", status_code=status.HTTP_200_OK, name="Api-key", tags=["Api-key"])
 async def remove_api_key(
     request: Request,
@@ -312,8 +275,6 @@ async def remove_api_key(
 # Login Redirect API Route
 =====================================================
 '''
-
-
 @router.get("/login-redirect", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def login_redirect(
     request: Request,
