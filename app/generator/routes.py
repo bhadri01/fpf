@@ -85,8 +85,6 @@ def create_crud_routes(model: Base) -> APIRouter:
             None, description="A string representing sort field and direction in the format 'field:direction'."),
         search: Optional[str] = Query(
             None, description="A string for global search across string fields."),
-        include: Optional[str] = Query(
-            None, description="Comma-separated list of related fields to include."),
         page: int = Query(1, description="Page number"),
         size: int = Query(50, description="Number of items per page"),
         session: AsyncSession = Depends(get_read_session),
@@ -95,13 +93,12 @@ def create_crud_routes(model: Base) -> APIRouter:
         Retrieve paginated records with optional filtering, sorting, and searching.
         """
 
-        include_fields = include.split(",") if include else []
-        cache_key = f"{model.__name__.lower()}_list_{hashlib.md5(str(filters).encode()).hexdigest()}_{sort}_{search}_{include}_page_{page}_size_{size}"
+        cache_key = f"{model.__name__.lower()}_list_{hashlib.md5(str(filters).encode()).hexdigest()}_{sort}_{search}_page_{page}_size_{size}"
         cached_data = await redis_cache.get(cache_key)
         if cached_data:
             return cached_data  # Return cached paginated response
 
-        query = await model.get_records(filters, sort, search, include_fields)
+        query = await model.get_records(filters, sort, search)
         response_data = await paginate_query(session, query, page, size)
         response_dict = jsonable_encoder(
             response_data, exclude_unset=True, exclude_none=True)
@@ -118,20 +115,17 @@ def create_crud_routes(model: Base) -> APIRouter:
     async def read_one(
         request: Request,
         id: str = Path(..., description="The ID of the record to retrieve."),
-        include: Optional[str] = Query(
-            None, description="Comma-separated list of related fields to include."),
         session: AsyncSession = Depends(get_read_session),
     ):
         """
         Retrieve a single record by its ID.
         """
-        include_fields = include.split(",") if include else []
-        cache_key = f"{model.__name__.lower()}_detail_{id}_{include}"
+        cache_key = f"{model.__name__.lower()}_detail_{id}"
         cached_data = await redis_cache.get(cache_key)
         if cached_data:
             return cached_data  # Return cached response
 
-        data = await model.get_record_by_id(session, id, include_fields)
+        data = await model.get_record_by_id(session, id)
         if not data:
             raise HTTPException(
                 status_code=404, detail=f"{model.__name__} with ID {id} not found")
