@@ -23,8 +23,6 @@ ENV = settings.environment
 # Middleware for authenticating users via JWT or API Key.
 =====================================================
 '''
-
-
 class PermissionMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
@@ -88,7 +86,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     # Authenticate user using API Key.
     =====================================================
     '''
-
     async def authenticate_api_key(self, request: Request):
         api_key = request.headers.get("X-API-Key")
         if not api_key:
@@ -114,7 +111,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     # Authenticate user using JWT token.
     =====================================================
     '''
-
     async def authenticate_user(self, request: Request):
         auth_header = request.headers.get("Authorization")
         if not auth_header:
@@ -182,7 +178,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     # Verify user status before allowing access.
     =====================================================
     '''
-
     def verify_user_status(self, user: User, request: Request):
         if user.status == UserStatus.PAUSED.value and request.method not in ["GET", "OPTIONS", "HEAD"]:
             return json_response_with_cors(
@@ -212,7 +207,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     # Check if a role has permission to access a route.
     =====================================================
     '''
-
     async def check_permission(self, role: str, path: str, method: str):
         permission_data = await redis_cache.get("permission_cache")
 
@@ -231,7 +225,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     # Convert API path parameters to regex patterns.
     =====================================================
     '''
-
     def path_to_regex(self, path: str):
         path = re.sub(r"\{[^/:]+\}", r"[^/]+", path)
         path = re.sub(r"\{[^/:]+:path\}", r".+", path)

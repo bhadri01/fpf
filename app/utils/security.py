@@ -20,8 +20,6 @@ TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 # Create JWT token
 =====================================================
 '''
-
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -39,8 +37,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # Decode JWT token
 =====================================================
 '''
-
-
 def decode_token(token: str):
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
@@ -50,8 +46,6 @@ def decode_token(token: str):
 # Hash Api key
 =====================================================
 '''
-
-
 def hash_key(api_key: str):
     secret_key = SECRET_KEY.encode()
     hashed = hmac.new(secret_key, api_key.encode(), hashlib.sha256).digest()
@@ -63,8 +57,6 @@ def hash_key(api_key: str):
 # Verify Api key
 =====================================================
 '''
-
-
 def verify_key(api_key: str, hashed_key: str) -> bool:
     return hash_key(api_key) == hashed_key
 
@@ -74,8 +66,6 @@ def verify_key(api_key: str, hashed_key: str) -> bool:
 # Encrypt Secret
 =====================================================
 '''
-
-
 def encrypt_secret(secret: str) -> str:
     """Encrypts 2FA secret using AES-256 encryption."""
     iv = os.urandom(16)
@@ -97,8 +87,6 @@ def encrypt_secret(secret: str) -> str:
 # Decrypt Secret
 =====================================================
 '''
-
-
 def decrypt_secret(encrypted_secret: str) -> str:
     """Decrypts an encrypted 2FA secret."""
     encrypted_secret = base64.b64decode(encrypted_secret)

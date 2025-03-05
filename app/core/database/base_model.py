@@ -1,12 +1,11 @@
-from sqlalchemy import UUID, DateTime, asc, delete, desc, func, or_, select, update
+from sqlalchemy import UUID, DateTime, String, asc, delete, desc, func, or_, select, update
 from sqlalchemy.ext.declarative import as_declarative, declarative_base
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.utils.filtering import parse_filters
-from typing import Any, Dict, List, Optional
+from app.utils.filtering import parse_filter_query, parse_filters, resolve_and_join_column
+from typing import Any, List, Optional
 from fastapi import HTTPException
 import uuid
-import json
 
 
 Base = declarative_base()
@@ -34,35 +33,17 @@ class Base:
     =====================================================
     '''
     @classmethod
-    async def bulk_create(cls, session: AsyncSession, data_list: List[Any]):
-        # 🔥 Call model-specific create() (defined in User, Role, etc.)
-        before_create = await cls.before_create(session, data_list)  
-
-        if not before_create:
-            return []  # Return empty list if no data provided
+    async def create(cls, session: AsyncSession, data_list: List[Any]):
+        if not data_list:
+            raise ValueError("No data provided to create records.")
 
         # 🔥 Ensure data is converted to dictionaries before passing to ORM
-        objects = [cls(**(data.dict() if hasattr(data, "dict") else data)) for data in before_create]
+        objects = [cls(**(data.dict() if hasattr(data, "dict") else data)) for data in data_list]
 
         session.add_all(objects)
         await session.commit()
 
-        for obj in objects:
-            await session.refresh(obj)
-        
-        # 🔥 Call model-specific after_create() (defined in User, Role, etc.)
-        await cls.after_create(session, objects)
-        return objects
-
-    @classmethod
-    async def before_create(cls, session: AsyncSession, data_list: List[Any]) -> List[Dict[str, Any]]:
-        # This method should be overridden in child classes to perform any pre-processing
-        return data_list
-    
-    @classmethod
-    async def after_create(cls, session: AsyncSession, data_list: List[Any]) -> List[Dict[str, Any]]:
-        # This method should be overridden in child classes to perform any post-processing
-        return data_list
+        return len(objects)
     
     '''
     =====================================================
@@ -70,14 +51,13 @@ class Base:
     =====================================================
     '''
     @classmethod
-    async def bulk_update(cls, session: AsyncSession, update_data_list: List[dict]):
-        if not update_data_list:
-            return 0  # No data to update
-        before_update = await cls.before_update(session, update_data_list)
+    async def update(cls, session: AsyncSession, data_list: List[dict]):
+        if not data_list:
+            raise ValueError("No data provided to update records.")
 
         updated_count = 0
 
-        for data_obj in before_update:
+        for data_obj in data_list:
             # ✅ Convert Pydantic model to dictionary
             data = data_obj.dict(exclude_unset=True) if hasattr(data_obj, "dict") else data_obj
 
@@ -97,23 +77,8 @@ class Base:
             if result.rowcount > 0:
                 updated_count += 1
 
-        await session.commit()  # ✅ Commit all updates at once
-
-        # 🔥 Call model-specific after_update() (defined in User, Role, etc.)
-        await cls.after_update(session, before_update)
-        
-        return updated_count  # ✅ Return number of updated records
-    
-    @classmethod
-    async def before_update(cls, session: AsyncSession, data_list: List[any]):
-        # This method should be overridden in child classes to perform any pre-processing
-        return data_list
-    
-    @classmethod
-    async def after_update(cls, session: AsyncSession, data_list: List[any]):
-        # This method should be overridden in child classes to perform any post-processing
-        return data_list
-    
+        await session.commit()
+        return updated_count
 
     '''
     =====================================================
@@ -121,61 +86,38 @@ class Base:
     =====================================================
     '''
     @classmethod
-    async def bulk_soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        before_delete_ids = await cls.before_soft_delete(session, ids)
-        if not before_delete_ids:
-            return 0  # No IDs provided
+    async def soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
+        if not ids:
+            raise ValueError("No IDs provided to delete records.")
 
         # Exclude already soft-deleted records
         stmt = (
             update(cls)
-            .where(cls.id.in_(before_delete_ids), cls.deleted_at.is_(None))
+            .where(cls.id.in_(ids), cls.deleted_at.is_(None))
             .values(deleted_at=func.now())  # Soft delete by setting timestamp
             .execution_options(synchronize_session=False)
         )
         result = await session.execute(stmt)
         await session.commit()
 
-        await cls.after_soft_delete(session, before_delete_ids)
         return result.rowcount 
     
-    @classmethod
-    async def before_soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        # This method should be overridden in child classes to perform any pre-processing
-        return ids
-    
-    @classmethod
-    async def after_soft_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        # This method should be overridden in child classes to perform any post-processing
-        return ids
-
     '''
     =====================================================
     # Permanently delete records from the database.
     =====================================================
     '''
     @classmethod
-    async def bulk_hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        before_delete_ids = await cls.before_hard_delete(session, ids)
-        if not before_delete_ids:
+    async def hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
+        if not ids:
             return 0  # No IDs provided
 
-        stmt = delete(cls).where(cls.id.in_(before_delete_ids))
+        stmt = delete(cls).where(cls.id.in_(ids))
         result = await session.execute(stmt)
         await session.commit()
 
-        await cls.after_hard_delete(session, before_delete_ids)
         return result.rowcount
 
-    @classmethod
-    async def before_hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        # This method should be overridden in child classes to perform any pre-processing
-        return ids
-
-    @classmethod
-    async def after_hard_delete(cls, session: AsyncSession, ids: List[uuid.UUID]):
-        # This method should be overridden in child classes to perform any post-processing
-        return ids
     '''
     =====================================================
     # Get only non-deleted (active) record by ID with optional include feature.
@@ -200,54 +142,43 @@ class Base:
         sort: Optional[str] = None,
         search: Optional[str] = None,
     ) -> List:
-        
-        # Exclude deleted records
         query = select(cls).where(cls.deleted_at.is_(None))
-
-        # 1️⃣ Apply Filters (Supports Nested Relationships)
-        def parse_filter_query(filters: Optional[str]) -> Optional[Dict]:
-            """
-            Parse a JSON string representing filters into a dictionary.
-            """
-            if not filters:
-                return None
-
-            try:
-                parsed_filters = json.loads(filters)
-                if not isinstance(parsed_filters, dict):  # Ensure it's a dictionary
-                    raise ValueError(
-                        "Filters should be a valid JSON object (dictionary).")
-                return parsed_filters
-            except (json.JSONDecodeError, ValueError) as e:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid filter JSON: {str(e)}")
 
         parsed_filters = parse_filter_query(filters)
         if parsed_filters:
-            query = query.where(parse_filters(
-                cls, parsed_filters))  # Apply filters
+            filter_expr, query = parse_filters(cls, parsed_filters, query)
+            if filter_expr is not None:
+                query = query.where(filter_expr)
 
-        # 2️⃣ Global Search (Across Text Fields)
         if search:
             search_expression = [
-                column.ilike(f"%{search}%") for column in cls.__table__.columns if column.type.python_type == str
+                column.ilike(f"%{search}%")
+                for column in cls.__table__.columns
+                if isinstance(column.type, String)
             ]
             if search_expression:
                 query = query.where(or_(*search_expression))
 
-        # 3️⃣ Sorting
         if sort:
             try:
                 sort_field, sort_direction = sort.split(":")
             except ValueError:
-                sort_field, sort_direction = sort, "asc"  # Default to ascending if no direction provided
+                sort_field, sort_direction = sort, "asc"
 
             column = getattr(cls, sort_field, None)
             if column is None:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid sort field: {sort_field}")
+                nested_keys = sort_field.split("__")
+                if len(nested_keys) > 1:
+                    joins = {}
+                    column, query = resolve_and_join_column(cls, nested_keys, query, joins)
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid sort field: {sort_field}"
+                    )
 
             query = query.order_by(
-                asc(column) if sort_direction.lower() == "asc" else desc(column))
+                asc(column) if sort_direction.lower() == "asc" else desc(column)
+            )
 
         return query

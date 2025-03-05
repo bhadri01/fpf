@@ -6,7 +6,11 @@ from app.core.config import settings
 # Redis Configuration
 REDIS_URL = settings.redis_url  # Example: "redis://localhost:6379"
 
-
+'''
+=====================================================
+# ✅ Redis Cache Class
+=====================================================
+'''
 class RedisCache:
     def __init__(self):
         self.redis = None

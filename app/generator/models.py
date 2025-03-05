@@ -1,5 +1,10 @@
 from app.core.database.base_model import Base
 
+'''
+=====================================================
+# Get all models that are allowed to be used in the generator
+=====================================================
+'''
 def get_models():
     models = []
     for mapper in Base.registry.mappers:

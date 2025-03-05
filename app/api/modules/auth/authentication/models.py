@@ -15,7 +15,6 @@ class APIKey(Base):
     user_id: Mapped[UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     key: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     user = relationship("User", back_populates="api_keys")
-    __allowed__ = True
 
 '''
 =====================================================

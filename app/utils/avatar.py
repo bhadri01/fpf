@@ -5,6 +5,12 @@ import hashlib
 import random
 import io
 
+'''
+=====================================================
+# Generate a pixelated avatar and upload to MinIO
+# returning the URL.
+=====================================================
+'''
 def generate_pixel_avatar(email, size=6, scale=32):
         """Generate a pixelated avatar and upload to MinIO, returning the URL."""
         random.seed(str(email))

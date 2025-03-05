@@ -17,7 +17,7 @@ import hashlib
 
 def create_crud_routes(model: Base) -> APIRouter:
 
-    SchemaCreate, SchemaUpdate, SchemaResponse = get_schemas(model)
+    SchemaCreate, SchemaUpdate, SchemaAllResponse, SchemaIdResponse = get_schemas(model)
     router = APIRouter(tags=[model.__name__.capitalize()])
     '''
     =====================================================
@@ -71,7 +71,7 @@ def create_crud_routes(model: Base) -> APIRouter:
     # Routes for retrieving data from the database
     =====================================================
     '''
-    @router.get("", response_model=Page[SchemaResponse], name=model.__name__.capitalize())
+    @router.get("", response_model=Page[SchemaAllResponse], name=model.__name__.capitalize())
     async def read_all(
         request: Request,
         filters: Optional[str] = Query(
@@ -111,7 +111,7 @@ def create_crud_routes(model: Base) -> APIRouter:
     # Route for retrieving a single record by ID
     =====================================================
     '''
-    @router.get("/{id}", response_model=SchemaResponse, status_code=status.HTTP_200_OK, name=model.__name__.capitalize())
+    @router.get("/{id}", response_model=SchemaIdResponse, status_code=status.HTTP_200_OK, name=model.__name__.capitalize())
     async def read_one(
         request: Request,
         id: str = Path(..., description="The ID of the record to retrieve."),
@@ -148,13 +148,13 @@ def create_crud_routes(model: Base) -> APIRouter:
         """
         Create multiple new records in bulk and invalidate cached list.
         """
-        objs = await model.bulk_create(session, items)
+        count = await model.create(session, items)
 
         # ✅ Batch cache deletion
         await redis_cache.delete_pattern(f"{model.__name__.lower()}_list_*")
         return {
             "detail": "Data created successfully",
-            "count": len(objs),
+            "count": count,
         }
 
     '''
@@ -178,7 +178,7 @@ def create_crud_routes(model: Base) -> APIRouter:
 
         ids = [item.id for item in items]
 
-        count = await model.bulk_update(session, items)
+        count = await model.update(session, items)
         if count == 0:
             raise HTTPException(
                 status_code=404, detail="No matching records found for update"
@@ -199,8 +199,7 @@ def create_crud_routes(model: Base) -> APIRouter:
     @router.delete("", status_code=status.HTTP_200_OK, name=model.__name__.capitalize())
     async def bulk_delete(
         request: Request,
-        ids: list[UUID] = Query(...,
-                                description="A list of IDs of the records to delete."),
+        ids: list[UUID],
         hard_delete: bool = Query(
             False, description="Set to True for hard delete (only allowed for SUPERADMIN)"),
         session: AsyncSession = Depends(get_write_session),
@@ -224,9 +223,9 @@ def create_crud_routes(model: Base) -> APIRouter:
                 raise HTTPException(
                     status_code=403, detail="Only SUPERADMIN can perform hard delete")
 
-            result = await model.bulk_hard_delete(session, ids)
+            result = await model.hard_delete(session, ids)
         else:
-            result = await model.bulk_soft_delete(session, ids)
+            result = await model.soft_delete(session, ids)
 
         if result == 0:
             raise HTTPException(

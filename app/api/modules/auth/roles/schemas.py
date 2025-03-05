@@ -1,6 +1,6 @@
 from app.api.schemas.base_schema import BaseResponseModel, CreateTime, OptionalUuidModel, UpdateTime, UuidModel
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Optional
 
 '''
 =====================================================
@@ -29,8 +29,16 @@ class RoleUpdate(RoleBase, UuidModel):
 
 '''
 =====================================================
-# Role Response Schema
+# Role All Response Schema
 =====================================================
 '''
-class RoleResponse(BaseResponseModel, CreateTime, UpdateTime, RoleBase, OptionalUuidModel):
+class RoleAllResponse(BaseResponseModel, CreateTime, UpdateTime, RoleBase, OptionalUuidModel):
+    pass
+
+'''
+=====================================================
+# Role Id Response Schema
+=====================================================
+'''
+class RoleIdResponse(BaseResponseModel, CreateTime, UpdateTime, RoleBase, OptionalUuidModel):
     pass

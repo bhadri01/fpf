@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Request, Form, Depends, status, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -69,8 +70,15 @@ async def assign_roles_post(
     if role is None:
         return RedirectResponse(url="/admin/settings/assign-roles", status_code=status.HTTP_303_SEE_OTHER)
 
+    try:
+        role_uuid = UUID(role)  # Convert role string to UUID
+    except ValueError:
+        return RedirectResponse(url="/admin/settings/assign-roles", status_code=status.HTTP_400_BAD_REQUEST)
+
     # Clear existing permissions for the role
-    await db.execute(delete(model_mapping['role_permissions']).where(model_mapping['role_permissions'].role_id == role))
+    await db.execute(
+        delete(model_mapping['role_permissions']).where(model_mapping['role_permissions'].role_id == role_uuid)
+    )
     await db.commit()
 
     # Add new permissions if routes are provided
@@ -78,7 +86,8 @@ async def assign_roles_post(
         for route in routes:
             path, method = route.split("|")
             permission = model_mapping['role_permissions'](
-                role_id=role, route=path, method=method)
+                role_id=role_uuid, route=path, method=method
+            )
             db.add(permission)
         await db.commit()
 
@@ -86,6 +95,7 @@ async def assign_roles_post(
     await load_permissions(db)
 
     return RedirectResponse(url="/admin/settings/assign-roles", status_code=status.HTTP_303_SEE_OTHER)
+
 
 
 async def get_model_instance(model_name: str, db: AsyncSession, id: int = None):

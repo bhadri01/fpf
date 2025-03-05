@@ -30,22 +30,12 @@ class Role(Base):
     =====================================================
     '''
     @classmethod
-    async def before_create(cls, session: AsyncSession, data_list: List[any]):
+    async def create(cls, session: AsyncSession, data_list: List[any]):
         print("Before Role created")
         for data in data_list:
             data.name = data.name.upper()
             data.description = data.description or "Default description"
-        return data_list
-    
-    '''
-    =====================================================
-    # After Create method for Role table
-    =====================================================
-    '''
-    @classmethod
-    async def after_create(cls, session: AsyncSession, data_list: List[any]):
-        print("After Role created")
-        pass
+        return await super().create(session, data_list)
     
     '''
     =====================================================
@@ -53,7 +43,7 @@ class Role(Base):
     =====================================================
     '''
     @classmethod
-    async def before_update(cls, session: AsyncSession, data_list: List[any]):
+    async def update(cls, session: AsyncSession, data_list: List[any]):
         for data in data_list:
             # Check if the role is reserved
             existing_role = await session.execute(select(Role).where(Role.id == data.id))
@@ -62,7 +52,7 @@ class Role(Base):
                 raise ValueError(f"Cannot modify reserved role: {existing_role.name}")
             data.name = data.name.upper()
             data.description = data.description or "Default description"
-        return data_list
+        return await super().update(session, data_list)
 
 '''
 =====================================================
@@ -73,8 +63,8 @@ class Role(Base):
 def insert_initial_roles(target, connection, **kw):
     session = Session(bind=connection)
     session.add_all([
-        Role(name='PUBLIC', description='Public role with limited access'),
-        Role(name='SUPERADMIN', description='Superadmin role with full access')
+        Role(name='PUBLIC', description='Role with limited access for general users'),
+        Role(name='SUPERADMIN', description='Role with full access for super administrators'),
     ])
     session.commit()
     session.close()

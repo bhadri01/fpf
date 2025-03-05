@@ -36,8 +36,16 @@ class RolePermissionUpdate(RolePermissionBase, UuidModel):
 
 '''
 =====================================================
-# RolePermission Response Schema
+# RolePermission All Response Schema
 =====================================================
 '''
-class RolePermissionResponse(BaseResponseModel, CreateTime, UpdateTime, RolePermissionBase, OptionalUuidModel):
+class RolePermissionAllResponse(BaseResponseModel, CreateTime, UpdateTime, RolePermissionBase, OptionalUuidModel):
+    pass
+
+'''
+=====================================================
+# RolePermission ID Response Schema
+=====================================================
+'''
+class RolePermissionIdResponse(BaseResponseModel, CreateTime, UpdateTime, RolePermissionBase, OptionalUuidModel):
     pass

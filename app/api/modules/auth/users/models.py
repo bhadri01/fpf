@@ -1,4 +1,5 @@
-from sqlalchemy import UUID, Boolean, String, ForeignKey
+from sqlalchemy import UUID, Boolean, String, ForeignKey, select
+from app.api.modules.auth.roles.models import Role
 from app.utils.password_utils import get_password_hash
 from app.utils.avatar import generate_pixel_avatar
 from sqlalchemy.orm import Mapped, mapped_column
@@ -51,7 +52,7 @@ class User(Base):
     =====================================================
     '''
     @classmethod
-    async def before_create(cls, session: AsyncSession, data_list: List[any]):
+    async def create(cls, session: AsyncSession, data_list: List[any]):
         processed_data = []
         for data in data_list:
             if isinstance(data, BaseModel):  # Convert Pydantic to dictionary
@@ -62,10 +63,18 @@ class User(Base):
             data["password"] = get_password_hash(data["password"])
             data["avatar"] = generate_pixel_avatar(data["email"])
             data["status"] = UserStatus.PENDING.value
+            if "role_id" not in data:
+                default_role = await session.execute(
+                    select(Role).where(Role.name == "USER")
+                )
+                default_role = default_role.scalars().first()
+                if not default_role:
+                    raise ValueError("Default role 'User' not found")
+                data["role_id"] = default_role.id
 
             processed_data.append(data)
 
-        return processed_data  # Return transformed data (No commit)
+        return await super().create(session, processed_data) 
     
     '''
     =====================================================
@@ -74,7 +83,7 @@ class User(Base):
     '''
 
     @classmethod
-    async def before_update(cls, session: AsyncSession, data_list: List[any]):
+    async def update(cls, session: AsyncSession, data_list: List[any]):
         processed_data = []
         
         for data in data_list:
@@ -94,4 +103,4 @@ class User(Base):
 
             processed_data.append({"id": obj_id, **data})
 
-        return processed_data  # ✅ Return modified data (No commit)
+        return await super().update(session, processed_data)

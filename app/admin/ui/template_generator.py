@@ -91,7 +91,7 @@ def generate_template(model, all_models):
     # Generate schemas
     =====================================================
     '''
-    SchemaCreate, SchemaUpdate, _ = get_schemas(model)
+    SchemaCreate, SchemaUpdate, SchemaAllResponse, SchemaIdResponse = get_schemas(model)
 
     # Generate create template
     create_template_content = f"""

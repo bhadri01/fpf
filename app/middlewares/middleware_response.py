@@ -1,6 +1,10 @@
 from fastapi.responses import JSONResponse
 
-
+'''
+=====================================================
+# ✅ JSON Response with CORS
+=====================================================
+'''
 def json_response_with_cors(content, status_code):
     return JSONResponse(
         content=content,

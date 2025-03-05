@@ -17,7 +17,7 @@ slave_db_engine = create_engine(
 
 # Async session factories
 async_master_session = async_sessionmaker(
-    bind=master_db_engine, autocommit=False, autoflush=False)
+    bind=master_db_engine, autocommit=False, autoflush=False, expire_on_commit=False)
 async_slave_session = async_sessionmaker(
     bind=slave_db_engine, autocommit=False, autoflush=False)
 
