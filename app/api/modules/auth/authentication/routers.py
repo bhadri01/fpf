@@ -1,7 +1,8 @@
-from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema
-from app.api.modules.auth.users.schemas import UserCreate, UserResponse
+from uuid import UUID
+from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema, UserRegisterCreate
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.database.db import get_read_session, get_write_session
+from app.api.modules.auth.users.schemas import UserIdResponse
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import BackgroundTasks
@@ -17,7 +18,7 @@ router = APIRouter()
 # Me API Route
 =====================================================
 '''
-@router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
+@router.get("/me", response_model=UserIdResponse, status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
 async def me(request: Request):
     if hasattr(request.state, 'user'):
         return request.state.user
@@ -47,7 +48,7 @@ async def login(
 @router.post("/register", status_code=status.HTTP_201_CREATED, name="Auth", tags=["Auth"])
 async def register(
     request: Request,
-    user: UserCreate,
+    user: UserRegisterCreate,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_write_session),
 ):
@@ -172,14 +173,14 @@ async def refresh_token(
     refresh_token: RefreshTokenSchema,
     db: AsyncSession = Depends(get_write_session),
 ):
-    return await AuthService(db).refresh_token(refresh_token)
+    return await AuthService(db).refresh_token(refresh_token.token)
 
 '''
 =====================================================
 # 2FA Setup Route
 =====================================================
 '''
-@router.get("/2fa-setup", response_model=Setup2FASchema, status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
+@router.get("/2fa-setup", response_model=Setup2FASchema, status_code=status.HTTP_200_OK, name="Auth2FA", tags=["Auth2FA"])
 async def two_factor_setup(
     request: Request,
     db: AsyncSession = Depends(get_write_session),
@@ -195,7 +196,7 @@ async def two_factor_setup(
 # 2FA Setup Verify Route
 =====================================================
 '''
-@router.post("/2fa-verify-setup", status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
+@router.post("/2fa-verify-setup", status_code=status.HTTP_200_OK, name="Auth2FA", tags=["Auth2FA"])
 async def two_factor_verify(
     request: Request,
     data: OTPSetupSchema,
@@ -212,7 +213,7 @@ async def two_factor_verify(
 # 2FA TOTP Verify Route
 =====================================================
 '''
-@router.post("/2fa-verify", response_model=TokenSchema, status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
+@router.post("/2fa-verify", response_model=TokenSchema, status_code=status.HTTP_200_OK, name="Auth2FA", tags=["Auth2FA"])
 async def two_factor_verify(
     request: Request,
     data: OTPVerificationSchema,
@@ -225,7 +226,7 @@ async def two_factor_verify(
 # 2FA Disable Route
 =====================================================
 '''
-@router.get("/2fa-disable", status_code=status.HTTP_200_OK, name="Auth-2FA", tags=["Auth-2FA"])
+@router.get("/2fa-disable", status_code=status.HTTP_200_OK, name="Auth2FA", tags=["Auth2FA"])
 async def two_factor_disable(
     request: Request,
     db: AsyncSession = Depends(get_write_session),
@@ -236,13 +237,27 @@ async def two_factor_disable(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User is not authenticated")
 
-
+'''
+=====================================================
+# Get Api-key Route
+=====================================================
+'''
+@router.get("/api-keys", status_code=status.HTTP_200_OK, name="Apikey", tags=["Apikey"])
+async def get_api_keys(
+    request: Request,
+    db: AsyncSession = Depends(get_read_session),
+):
+    if hasattr(request.state, 'user'):
+        return await AuthService(db).get_api_keys(request.state.user)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User is not authenticated")
 '''
 =====================================================
 # Create Api-key Route
 =====================================================
 '''
-@router.post("/create-api-key", status_code=status.HTTP_201_CREATED, name="Api-key", tags=["Api-key"])
+@router.post("/create-api-key", status_code=status.HTTP_201_CREATED, name="Apikey", tags=["Apikey"])
 async def create_api_key(
     request: Request,
     db: AsyncSession = Depends(get_write_session),
@@ -258,14 +273,14 @@ async def create_api_key(
 # Remove Api-key Route
 =====================================================
 '''
-@router.delete("/remove-api-key/{key}", status_code=status.HTTP_200_OK, name="Api-key", tags=["Api-key"])
+@router.delete("/remove-api-key/{key_id}", status_code=status.HTTP_200_OK, name="Apikey", tags=["Apikey"])
 async def remove_api_key(
     request: Request,
-    key: str,
+    key_id: UUID,
     db: AsyncSession = Depends(get_write_session),
 ):
     if hasattr(request.state, 'user'):
-        return await AuthService(db).remove_api_key(request.state.user, key)
+        return await AuthService(db).remove_api_key(request.state.user, key_id)
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User is not authenticated")

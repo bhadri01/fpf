@@ -24,7 +24,7 @@ class UserBase(BaseModel):
 class UserCreate(BaseModel):
     username: str = Field(..., description="Username of the user")
     email: EmailStr = Field(..., description="Email address of the user")
-    password: str = Field(..., min_length=8,description="Password for the user")
+    password: str = Field(..., description="Password for the user")
     role_id: uuid.UUID = Field(...,description="Role ID associated with the user")
 
 
@@ -35,7 +35,7 @@ class UserCreate(BaseModel):
 '''
 class UserUpdate(UserBase, UuidModel):
     role_id: Optional[uuid.UUID] = Field(None, description="Role ID associated with the user")
-    password: Optional[str] = Field(None, min_length=8, description="Password for the user")
+    password: Optional[str] = Field(None, description="Password for the user")
 
 
 '''
@@ -51,8 +51,17 @@ class UserRoleResponse(BaseModel):
 
 '''
 =====================================================
-# User Response Schema
+# User All Response Schema
 =====================================================
 '''
-class UserResponse(BaseResponseModel, CreateTime, UpdateTime, UserBase, OptionalUuidModel):
+class UserAllResponse(BaseResponseModel, CreateTime, UpdateTime, UserBase, OptionalUuidModel):
+    role: Optional[UserRoleResponse] = Field(None, description="Role associated with the user")
+
+
+'''
+=====================================================
+# User Id Response Schema
+=====================================================
+'''
+class UserIdResponse(BaseResponseModel, CreateTime, UpdateTime, UserBase, OptionalUuidModel):
     role: Optional[UserRoleResponse] = Field(None, description="Role associated with the user")

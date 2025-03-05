@@ -1,8 +1,12 @@
 from sqlalchemy.future import select
 from sqlalchemy.sql import func
 
+'''
+=====================================================
+# Paginate Query
+=====================================================
+'''
 async def paginate_query(session, query, page, size):
-    # Count total items (without loading them all)
     total_query = select(func.count()).select_from(query.subquery())
     total = (await session.execute(total_query)).scalar()
 

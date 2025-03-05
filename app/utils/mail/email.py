@@ -33,8 +33,6 @@ conf = ConnectionConfig(
 # ✅ Send Email Function
 =====================================================
 '''
-
-
 async def send_email(email: List[str], subject: str, template_name: str, context: dict):
     """
     Sends an email using the configured SMTP settings.

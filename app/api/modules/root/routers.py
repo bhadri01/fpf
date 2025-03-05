@@ -1,7 +1,6 @@
 from fastapi import APIRouter, status
 from fastapi.responses import PlainTextResponse
 from app.core.config import settings
-from fastapi import HTTPException
 
 router = APIRouter()
 

@@ -3,7 +3,11 @@ from sqlalchemy import inspect
 from datetime import datetime
 from typing import Optional
 
-
+'''
+=====================================================
+# Auto-generate Pydantic schemas from SQLAlchemy models
+=====================================================
+'''
 def auto_generate_schemas(model):
     # Inspect SQLAlchemy model columns
     mapper = inspect(model)
@@ -16,16 +20,14 @@ def auto_generate_schemas(model):
     }
 
     # Exclude fields for Create and Update schemas
-    exclude_fields = ["id", "created_at",
-                      "updated_at", "deleted_at", "created_by", "updated_by", "deleted_by"]
+    exclude_fields = ["id", "created_at", "updated_at", "deleted_at", "created_by", "updated_by", "deleted_by"]
     create_fields = {
         key: value
         for key, value in fields.items()
         if key not in exclude_fields
     }
 
-    update_exclude_fields = ["created_at",
-                             "updated_at", "deleted_at", "created_by", "updated_by", "deleted_by"]
+    update_exclude_fields = ["created_at", "updated_at", "deleted_at", "created_by", "updated_by", "deleted_by"]
     update_fields = {
         key: (Optional[value[0]], None)
         for key, value in fields.items()
@@ -37,8 +39,7 @@ def auto_generate_schemas(model):
     SchemaUpdate = create_model(f"{model.__name__}Update", **update_fields)
 
     # Exclude sensitive fields from the Response schema
-    response_exclude_fields = {"password", "created_by",
-                               "updated_by", "deleted_by", "deleted_at"}
+    response_exclude_fields = {"password", "created_by", "updated_by", "deleted_by", "deleted_at"}
     response_fields = {
         key: (Optional[value[0]], None)
         for key, value in fields.items()

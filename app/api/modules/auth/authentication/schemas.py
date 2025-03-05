@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
 
 '''
@@ -9,6 +9,16 @@ from uuid import UUID
 class UserLoginSchema(BaseModel):
     identifier: str = Field(..., description="Username / email for login")
     password: str = Field(..., description="Password for login")
+
+'''
+=====================================================
+# User Register Schema
+=====================================================
+'''
+class UserRegisterCreate(BaseModel):
+    username: str = Field(..., description="Username of the user")
+    email: EmailStr = Field(..., description="Email address of the user")
+    password: str = Field(..., description="Password for the user")
 
 '''
 =====================================================
@@ -37,8 +47,8 @@ class AccessTokenResponseSchema(BaseModel):
 '''
 class ResetTokenSchema(BaseModel):
     token: str = Field(..., description="Reset token for password reset")
-    new_password: str = Field(..., min_length=8, description="New password for the user")
-    confirm_password: str = Field(..., min_length=8, description="Confirmation of the new password")
+    new_password: str = Field(..., description="New password for the user")
+    confirm_password: str = Field(..., description="Confirmation of the new password")
 
 '''
 =====================================================
@@ -47,8 +57,8 @@ class ResetTokenSchema(BaseModel):
 '''
 class ChangePasswordSchema(BaseModel):
     current_password: str = Field(..., description="Current password of the user")
-    new_password: str = Field(..., min_length=8, description="New password for the user")
-    confirm_password: str = Field(..., min_length=8, description="Confirmation of the new password")
+    new_password: str = Field(..., description="New password for the user")
+    confirm_password: str = Field(..., description="Confirmation of the new password")
 
 '''
 =====================================================
@@ -102,4 +112,4 @@ class OTPVerificationSchema(BaseModel):
 =====================================================
 '''
 class RefreshTokenSchema(BaseModel):
-    refresh_token: str = Field(..., description="Refresh token for authentication")
+    token: str = Field(..., description="Refresh token for authentication")

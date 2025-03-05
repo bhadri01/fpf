@@ -1,12 +1,10 @@
-import re
+from .schemas import OTPSetupSchema, OTPVerificationSchema, ResetTokenSchema, ChangePasswordSchema, UserLoginSchema, UserRegisterCreate
+from app.utils.security import create_access_token, decode_token, decrypt_secret, encrypt_secret, hash_key
+from app.utils.token_blacklist import add_token_to_blacklist, is_token_blacklisted
 from app.api.modules.auth.authentication.models import APIKey, RoleRedirection
 from app.middlewares.middleware_response import json_response_with_cors
-from app.utils.token_blacklist import add_token_to_blacklist, is_token_blacklisted
-from .schemas import OTPSetupSchema, OTPVerificationSchema, ResetTokenSchema, ChangePasswordSchema, UserLoginSchema
 from app.utils.password_utils import get_password_hash, verify_password
-from app.utils.security import create_access_token, decode_token, decrypt_secret, encrypt_secret, hash_key
 from fastapi import BackgroundTasks, HTTPException, status
-from app.api.modules.auth.users.schemas import UserCreate
 from app.api.modules.auth.users.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta, datetime, UTC
@@ -64,27 +62,26 @@ class AuthService:
     =====================================================
     '''
 
-    async def register_user(self, user: UserCreate, background_tasks: BackgroundTasks):
+    async def register_user(self, user: UserRegisterCreate, background_tasks: BackgroundTasks):
         # Check if user exists
-        existing_user_query = select(User).where(User.username == user.username)
-        existing_user_result = await self.db.execute(existing_user_query)
+        existing_user_result = await self.db.execute(select(User).where(User.username == user.username))
         existing_user = existing_user_result.scalar_one_or_none()
         if existing_user:
             raise HTTPException(status_code=400, detail="Username already exists")
 
         # Check if email exists
-        existing_email_query = select(User).where(User.email == user.email)
-        existing_email_result = await self.db.execute(existing_email_query)
+        existing_email_result = await self.db.execute(select(User).where(User.email == user.email))
         existing_email = existing_email_result.scalar_one_or_none()
         if existing_email:
             raise HTTPException(status_code=400, detail="Email already exists")
 
         # Create user (ensure this operation is in an async context)
-        objs = await User.create(self.db, [user])
-        user_dict = objs[0]  # This will be a dictionary
-
-        # Convert dictionary back to a User object for proper ORM handling
-        created_user = User(**user_dict)  # This assumes User is an ORM model that can accept a dictionary
+        count = await User.create(self.db, [user])
+        if count != 1:
+            raise HTTPException(status_code=400, detail="Failed to create user")
+        
+        objs = await self.db.execute(select(User).where(User.email == user.email))
+        created_user = objs.scalars().first()
 
         # Add the user to the session and commit in an async context
         self.db.add(created_user)
@@ -284,7 +281,12 @@ class AuthService:
         if datetime.now(UTC) > datetime.fromtimestamp(payload.get("exp"), tz=UTC):
             raise HTTPException(
                 status_code=400, detail="Token expired")
-
+        if len(token_data["new_password"]) < 8:
+            raise HTTPException(
+            status_code=400, detail="Password must be at least 8 characters long")
+        if token_data["new_password"] != token_data["confirm_password"]:
+            raise HTTPException(
+            status_code=400, detail="Passwords do not match")
         user.password = get_password_hash(token_data["new_password"])
         await self.db.commit()
         add_token_to_blacklist(token_data["token"])
@@ -303,9 +305,12 @@ class AuthService:
         if not user or not verify_password(data.current_password, user.password):
             raise HTTPException(
                 status_code=401, detail="Invalid Old password")
+        if len(data.new_password) < 8:
+            raise HTTPException(
+            status_code=400, detail="Password must be at least 8 characters long")
         if data.new_password != data.confirm_password:
             raise HTTPException(
-                status_code=400, detail="Passwords do not match")
+            status_code=400, detail="Passwords do not match")
         user.password = get_password_hash(data.new_password)
         await self.db.commit()
         return {"detail": "Password changed successfully"}
@@ -438,7 +443,7 @@ class AuthService:
 
         return {
             "qr_code": img_io.getvalue().hex(),  # Only for immediate display
-            "secret": secret  # Only used once
+            "secret": encrypt_secret(secret)  # Only used once
         }
 
     '''
@@ -451,7 +456,7 @@ class AuthService:
         if user.status_2fa:
             raise HTTPException(
                 status_code=400, detail="2FA is already enabled for this user")
-        totp = pyotp.TOTP(data.secret)
+        totp = pyotp.TOTP(decrypt_secret(data.secret))
         if not totp.verify(data.otp_code):
             raise HTTPException(
                 status_code=400, detail="Invalid OTP. Please try again.")
@@ -462,7 +467,7 @@ class AuthService:
             raise HTTPException(status_code=404, detail="User not found")
         # ✅ OTP is correct → Enable 2FA
         user.status_2fa = True
-        user.secret_2fa = encrypt_secret(data.secret)
+        user.secret_2fa = data.secret
         await self.db.commit()
 
         return {"detail": "2FA enabled successfully!"}
@@ -514,6 +519,26 @@ class AuthService:
 
     '''
     =====================================================
+    # Get Api-key Route
+    =====================================================
+    '''
+
+    async def get_api_keys(self, user: User):
+        query = select(APIKey).where(APIKey.user_id == user.id)
+        result = await self.db.execute(query)
+        api_keys = result.scalars().all()
+        masked_keys = [
+            {
+            "id": api_key.id,
+            "key": f"{api_key.key[:4]}{'*' * 5}",
+            "created_at": api_key.created_at,
+            }
+            for api_key in api_keys
+        ]
+        return masked_keys
+
+    '''
+    =====================================================
     # Create Api-key Route
     =====================================================
     '''
@@ -533,9 +558,8 @@ class AuthService:
     =====================================================
     '''
 
-    async def remove_api_key(self, user: User, key: str):
-        query = select(APIKey).where(APIKey.user_id ==
-                                     user.id, APIKey.key == hash_key(key))
+    async def remove_api_key(self, user: User, key_id: str):
+        query = select(APIKey).where(APIKey.user_id == user.id, APIKey.id == key_id)
         result = await self.db.execute(query)
         api_key = result.scalar_one_or_none()
 

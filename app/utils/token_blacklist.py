@@ -14,8 +14,6 @@ token_blacklist: Dict[str, datetime] = {}
 # Add token to blacklist
 =====================================================
 '''
-
-
 def add_token_to_blacklist(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -38,8 +36,6 @@ def add_token_to_blacklist(token: str):
 # Check if token is blacklisted
 =====================================================
 '''
-
-
 def is_token_blacklisted(token: str) -> bool:
     if token in token_blacklist:
         if datetime.now(timezone.utc) < token_blacklist[token]:
@@ -54,8 +50,6 @@ def is_token_blacklisted(token: str) -> bool:
 # Cleanup expired tokens
 =====================================================
 '''
-
-
 def cleanup_expired_tokens():
     now = datetime.now(timezone.utc)
     tokens_to_remove = [token for token,

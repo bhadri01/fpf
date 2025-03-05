@@ -1,16 +1,20 @@
-from ..modules.auth.roles_permission.schemas import RolePermissionCreate, RolePermissionUpdate, RolePermissionResponse
-from ..modules.auth.roles.schemas import RoleCreate, RoleUpdate, RoleResponse
-from ..modules.auth.users.schemas import UserCreate, UserUpdate, UserResponse
+from app.api.modules.auth.roles_permission.schemas import RolePermissionCreate, RolePermissionUpdate, RolePermissionAllResponse, RolePermissionIdResponse
+from app.api.modules.auth.roles.schemas import RoleCreate, RoleUpdate, RoleAllResponse, RoleIdResponse
+from app.api.modules.auth.users.schemas import UserAllResponse, UserCreate, UserIdResponse, UserUpdate
 
 '''
 =====================================================
-# "ModelName": [ModelCreate, ModelUpdate, ModelResponse]
+-----------------------------------------------------------------
+| ModelCreate | ModelUpdate | ModelAllResponse | ModelIdResponse |
+|-------------|-------------|------------------|-----------------|
+| POST /event | PUT /event  | GET /event       | GET /event/{id} |
+------------------------------------------------------------------
 # Follow the above pattern to add new schemas
 =====================================================
 '''
 
-schema_names = {   
-    "Role": [RoleCreate, RoleUpdate, RoleResponse],
-    "RolePermission": [RolePermissionCreate, RolePermissionUpdate, RolePermissionResponse],
-    "User": [UserCreate, UserUpdate, UserResponse]
+schema_names = {
+    "Role": [RoleCreate, RoleUpdate, RoleAllResponse, RoleIdResponse],
+    "RolePermission": [RolePermissionCreate, RolePermissionUpdate, RolePermissionAllResponse, RolePermissionIdResponse],
+    "User": [UserCreate, UserUpdate, UserAllResponse, UserIdResponse],
 }
