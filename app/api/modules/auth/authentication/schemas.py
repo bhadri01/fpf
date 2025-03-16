@@ -113,3 +113,10 @@ class OTPVerificationSchema(BaseModel):
 '''
 class RefreshTokenSchema(BaseModel):
     token: str = Field(..., description="Refresh token for authentication")
+
+
+class InvitedUserRegisterCreate(BaseModel):
+    token: str = Field(..., description="token for authentication")
+    username: str = Field(..., description="Username of the user")
+    password: str = Field(..., description="Password for the user")
+    

@@ -15,6 +15,7 @@ import pandas as pd
 import hashlib
 
 
+
 def create_crud_routes(model: Base) -> APIRouter:
 
     SchemaCreate, SchemaUpdate, SchemaAllResponse, SchemaIdResponse = get_schemas(model)

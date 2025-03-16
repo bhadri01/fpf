@@ -1,4 +1,4 @@
-from .schemas import OTPSetupSchema, OTPVerificationSchema, ResetTokenSchema, ChangePasswordSchema, UserLoginSchema, UserRegisterCreate
+from .schemas import OTPSetupSchema, OTPVerificationSchema, ResetTokenSchema, ChangePasswordSchema, UserLoginSchema, UserRegisterCreate,InvitedUserRegisterCreate
 from app.utils.security import create_access_token, decode_token, decrypt_secret, encrypt_secret, hash_key
 from app.utils.token_blacklist import add_token_to_blacklist, is_token_blacklisted
 from app.api.modules.auth.authentication.models import APIKey, RoleRedirection
@@ -15,6 +15,10 @@ from sqlalchemy.future import select
 from sqlalchemy.sql import or_
 from pydantic import EmailStr
 from PIL import Image
+from jose import jwt
+from jose.exceptions import JWTError,ExpiredSignatureError
+from app.utils.security import SECRET_KEY, ALGORITHM, hash_key
+from app.utils.mail.email import send_email
 import hashlib
 import secrets
 import random
@@ -22,6 +26,9 @@ import qrcode
 import pyotp
 import os
 import io
+import uuid
+from jose import JWTError, jwt
+
 
 FORGOT_PASSWORD_COOLDOWN = 5 * 60  # 5 minutes in seconds
 
@@ -82,11 +89,6 @@ class AuthService:
         
         objs = await self.db.execute(select(User).where(User.email == user.email))
         created_user = objs.scalars().first()
-
-        # Add the user to the session and commit in an async context
-        self.db.add(created_user)
-        await self.db.commit()
-        await self.db.refresh(created_user)
 
         # Create Access Token
         return_token = create_access_token(data={
@@ -588,3 +590,91 @@ class AuthService:
             raise HTTPException(
                 status_code=404, detail="No redirection found for the user's role")
         return {"detail": result.redirect}
+
+    '''
+    =====================================================
+    # Invite user  API Route
+    =====================================================
+    '''
+
+    async def invite_user(self, email: str, role_id: str, background_tasks: BackgroundTasks):
+
+        existing_email = await self.db.execute(select(User).where(User.email == email))
+        if existing_email.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already exists")
+
+        invite_link = create_access_token(
+            data={"email": email, "role_id": role_id, "type": "invitation"},
+            expires_delta=timedelta(hours=24)
+        )
+        email_list = [email]
+
+        context = {
+            "user_name": email.split("@")[0],
+            "app_name": settings.app_name,
+            "invitation_link": f"{settings.verify_url}?token={invite_link}"
+        }
+
+        background_tasks.add_task(send_email, email_list, "You're Invited!", "invitation.html", context)
+
+        return {"message": "Invitation sent!", "invite_link": context["invitation_link"]}
+
+
+    '''
+    =====================================================
+    # Register invited  API Route
+    =====================================================
+    '''
+    async def register_invited_user(self, user: InvitedUserRegisterCreate, background_tasks: BackgroundTasks):
+
+
+        payload = jwt.decode(user.token, SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") != "invitation":
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        
+        email, role_id = payload.get("email"), payload.get("role_id")
+
+        existing_user = await self.db.execute(select(User).where(User.username == user.username))
+        if existing_user.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Username already exists")
+
+        existing_email = await self.db.execute(select(User).where(User.email == email))
+        if existing_email.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already exists")
+
+        user_data = {
+            "username": user.username,
+            "email": email,
+            "password": user.password,  
+            "role_id": role_id
+        }
+
+        # Create user
+        count = await User.create(self.db, [user_data]) 
+        if count != 1:
+            raise HTTPException(status_code=400, detail="Failed to create user")
+
+        objs = await self.db.execute(select(User).where(User.email == email))
+        created_user = objs.scalars().first()
+
+
+        return_token = create_access_token(
+            data={"id": str(created_user.id), "type": "verify_user"},
+            expires_delta=timedelta(days=1)
+        )
+
+        # Send verification email asynchronously
+        context = {
+            "app_name": settings.app_name,
+            "user_name": created_user.username,
+            "verification_link": f"{settings.verify_url}?token={return_token}"
+        }
+        email_list = [created_user.email]
+        background_tasks.add_task(send_email, email_list, "Account Verification", "verification.html", context)
+
+        return {"detail": "User registered successfully. Verification link sent to your email"}
+
+   
+     
+
+#

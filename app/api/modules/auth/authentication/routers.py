@@ -1,5 +1,5 @@
 from uuid import UUID
-from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema, UserRegisterCreate
+from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema, UserRegisterCreate, InvitedUserRegisterCreate
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.database.db import get_read_session, get_write_session
 from app.api.modules.auth.users.schemas import UserIdResponse
@@ -10,6 +10,16 @@ from .services import AuthService
 from pydantic import EmailStr
 from fastapi import Request
 from fastapi import status
+from app.utils.mail.email import send_email
+from app.core.config import settings
+import datetime
+import os
+import uuid
+from jose import JWTError, jwt
+from app.utils.security import SECRET_KEY, ALGORITHM, hash_key
+from app.utils.mail.email import send_email
+
+
 
 router = APIRouter()
 
@@ -300,3 +310,34 @@ async def login_redirect(
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User is not authenticated")
+
+
+'''
+=====================================================
+# invite user 
+=====================================================
+'''
+
+@router.post("/invite", status_code=201, name="Auth", tags=["Auth"])
+async def invite_user(
+    email: str,
+    role_id: str, 
+    background_tasks: BackgroundTasks, 
+    db: AsyncSession = Depends(get_write_session)):
+
+    return await AuthService(db).invite_user(email, role_id, background_tasks)
+
+'''
+=====================================================
+# register via invited mail
+=====================================================
+'''
+
+@router.post("/invited_register", status_code=status.HTTP_201_CREATED, name="Auth", tags=["Auth"])
+async def register(
+    request: Request,
+    user: InvitedUserRegisterCreate,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_write_session),
+):
+    return await AuthService(db).register_invited_user(user, background_tasks)
