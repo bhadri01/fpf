@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from uuid import UUID
-
+from typing import Optional, List
 '''
 =====================================================
 # User Login Schema
@@ -120,3 +120,11 @@ class InvitedUserRegisterCreate(BaseModel):
     username: str = Field(..., description="Username of the user")
     password: str = Field(..., description="Password for the user")
     
+'''
+=====================================================
+# Export Request Schema
+=====================================================
+'''
+
+class ExportRequest(BaseModel):
+    table_name: str = Field(..., description="Name of the table to export")
