@@ -1,18 +1,19 @@
 from uuid import UUID
-from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema, UserRegisterCreate, InvitedUserRegisterCreate
+from .schemas import AccessTokenResponseSchema, OTPSetupSchema, OTPVerificationSchema, RefreshTokenSchema, Setup2FASchema, TokenSchema, TwoFactorAuthSchema, UserLoginSchema, ResetTokenSchema, ChangePasswordSchema, UserRegisterCreate, InvitedUserRegisterCreate,ExportRequest
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.database.db import get_read_session, get_write_session
 from app.api.modules.auth.users.schemas import UserIdResponse
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import BackgroundTasks
-from .services import AuthService
+from .services import AuthService,ExportService
+import datetime 
+from fastapi.responses import StreamingResponse
 from pydantic import EmailStr
 from fastapi import Request
 from fastapi import status
 from app.utils.mail.email import send_email
 from app.core.config import settings
-import datetime
 import os
 import uuid
 from jose import JWTError, jwt
@@ -341,3 +342,20 @@ async def register(
     db: AsyncSession = Depends(get_write_session),
 ):
     return await AuthService(db).register_invited_user(user, background_tasks)
+
+
+
+
+'''
+=====================================================
+# Export Request Schema
+=====================================================
+'''
+
+@router.post("/export-request", status_code=status.HTTP_200_OK, name="Auth", tags=["Auth"])
+async def export_request(
+    request: Request,
+    export_data: ExportRequest,
+    db: AsyncSession = Depends(get_read_session),
+):
+    return await ExportService(db).export_table(export_data.table_name, request)

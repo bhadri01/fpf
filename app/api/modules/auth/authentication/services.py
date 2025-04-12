@@ -4,7 +4,7 @@ from app.utils.token_blacklist import add_token_to_blacklist, is_token_blacklist
 from app.api.modules.auth.authentication.models import APIKey, RoleRedirection
 from app.middlewares.middleware_response import json_response_with_cors
 from app.utils.password_utils import get_password_hash, verify_password
-from fastapi import BackgroundTasks, HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status, Request
 from app.api.modules.auth.users.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta, datetime, UTC
@@ -28,7 +28,10 @@ import os
 import io
 import uuid
 from jose import JWTError, jwt
-
+from typing import AsyncGenerator
+import csv
+from fastapi.responses import StreamingResponse
+from sqlalchemy import text
 
 FORGOT_PASSWORD_COOLDOWN = 5 * 60  # 5 minutes in seconds
 
@@ -677,4 +680,62 @@ class AuthService:
    
      
 
-#
+'''
+=====================================================
+# Export Request Schema
+=====================================================
+'''
+
+class ExportService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def export_table(self, table_name: str, request: Request) -> StreamingResponse:
+        # Check authentication
+        if not hasattr(request.state, 'user'):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, 
+                detail="User is not authenticated"
+            )
+        
+        # Validate table name
+        if not all(c.isalnum() or c == '_' for c in table_name):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid table name"
+            )
+            
+        # Generate filename
+        filename = f"{table_name}_export.csv"
+        
+        # Create streaming response
+        return StreamingResponse(
+            self._generate_csv_rows(table_name),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    async def _generate_csv_rows(self, table_name: str) -> AsyncGenerator[bytes, None]:
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        
+        result = await self.db.execute(text(f"SELECT * FROM {table_name}"))
+        
+        if result.returns_rows:
+            # Write headers
+            writer.writerow(result.keys())
+            buffer.seek(0)
+            yield buffer.getvalue().encode('utf-8')
+            buffer.seek(0)
+            buffer.truncate(0)
+            
+            # Write rows
+            for row in result:
+                writer.writerow(row)
+                buffer.seek(0)
+                yield buffer.getvalue().encode('utf-8')
+                buffer.seek(0)
+                buffer.truncate(0)
