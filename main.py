@@ -54,7 +54,6 @@ from app.api.modules.upload.routers import router as upload_router
 from app.api.modules.auth.authentication.routers import router as authentication_router
 from app.api.modules.root.routers import router as root_router
 
-
 # Determine if running in production
 ENV = settings.environment
 
@@ -116,7 +115,6 @@ app.include_router(super_admin_router, prefix="/admin", tags=["Admin"], include_
 app.include_router(root_router,tags=["Root"], dependencies=[Depends(get_current_user)])
 app.include_router(upload_router,  prefix="/api/storage",tags=["Upload"], dependencies=[Depends(get_current_user)])
 app.include_router(authentication_router, prefix="/api/auth", dependencies=[Depends(get_current_user)])
-
 
 async def start_periodic_cleanup():
     while True:

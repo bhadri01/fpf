@@ -617,7 +617,7 @@ class AuthService:
 
         background_tasks.add_task(send_email, email_list, "You're Invited!", "invitation.html", context)
 
-        return {"message": "Invitation sent!", "invite_link": context["invitation_link"]}
+        return {"details": "Success", "Message": "Successfully sent the invitation email"}
 
 
     '''
